@@ -68,7 +68,11 @@ func Commands(line string) {
 		if cmdString == "exit" {
 			os.Exit(1)
 		}
-		go commander(cmdString, instID[1])
+		if cmdString != "" {
+			go commander(cmdString, instID[1])
+		} else {
+			fmt.Println(cmdString)
+		}
 
 	}
 }
@@ -87,6 +91,7 @@ func commander(cmdString string, instID string) {
 			break
 		}
 	}
+
 	cmdOut := ssmaws.GetCommandOutput(sess, cmdid, instID)
 	sout := strings.TrimSuffix(*cmdOut.StandardOutputContent, "\n")
 	fmt.Println(base64Decode(sout))
