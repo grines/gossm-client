@@ -77,9 +77,9 @@ func Commands(line string) {
 	}
 }
 
-func base64Decode(str string) string {
-	data, _ := base64.StdEncoding.DecodeString(str)
-	return string(data)
+func base64Decode(str string) (string, error) {
+	data, err := base64.StdEncoding.DecodeString(str)
+	return string(data), err
 }
 
 func commander(cmdString string, instID string) {
@@ -94,5 +94,10 @@ func commander(cmdString string, instID string) {
 
 	cmdOut := ssmaws.GetCommandOutput(sess, cmdid, instID)
 	sout := strings.TrimSuffix(*cmdOut.StandardOutputContent, "\n")
-	fmt.Println(base64Decode(sout))
+	decoded, err := base64Decode(sout)
+	if err != nil {
+		fmt.Println(sout)
+	} else {
+		fmt.Println(decoded)
+	}
 }
