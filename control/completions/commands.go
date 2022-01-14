@@ -6,6 +6,7 @@ import (
 	"io/ioutil"
 	"os"
 	"strings"
+	"time"
 
 	"github.com/grines/ssmmmm-client/control/ssmaws"
 )
@@ -86,6 +87,7 @@ func commander(cmdString string, instID string) {
 	cmdid := ssmaws.SendCommand(sess, cmdString, instID)
 
 	for {
+		time.Sleep(1 * time.Second)
 		status := ssmaws.GetCommandOutput(sess, cmdid, instID)
 		if *status.Status == "Success" {
 			break
