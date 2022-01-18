@@ -39,33 +39,38 @@ func listProfiles() func(string) []string {
 }
 
 func listInstances(sess *session.Session) func(string) []string {
+	var instances []string
+
 	return func(line string) []string {
-		var instances []string
+		if connected == true {
 
-		svc := ssm.New(sess)
-		input := &ssm.DescribeInstanceInformationInput{}
+			svc := ssm.New(sess)
+			input := &ssm.DescribeInstanceInformationInput{}
 
-		result, err := svc.DescribeInstanceInformation(input)
-		if err != nil {
-			if aerr, ok := err.(awserr.Error); ok {
-				switch aerr.Code() {
-				default:
-					fmt.Println(aerr.Error())
+			result, err := svc.DescribeInstanceInformation(input)
+			if err != nil {
+				if aerr, ok := err.(awserr.Error); ok {
+					switch aerr.Code() {
+					default:
+						fmt.Println(aerr.Error())
+					}
+				} else {
+					// Print the error, cast err to awserr.Error to get the Code and
+					// Message from an error.
+					fmt.Println(err.Error())
 				}
-			} else {
-				// Print the error, cast err to awserr.Error to get the Code and
-				// Message from an error.
-				fmt.Println(err.Error())
+				return nil
 			}
-			return nil
-		}
-		for _, v := range result.InstanceInformationList {
-			if v.ComputerName != nil && v.InstanceId != nil {
-				instances = append(instances, *v.ComputerName+":"+*v.InstanceId)
+			for _, v := range result.InstanceInformationList {
+				if v.ComputerName != nil && v.InstanceId != nil {
+					instances = append(instances, *v.ComputerName+":"+*v.InstanceId)
+				}
+
 			}
 
+			return instances
+		} else {
+			return instances
 		}
-
-		return instances
 	}
 }
