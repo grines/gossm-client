@@ -76,8 +76,14 @@ func Commands(line string) {
 		if cmdString == "exit" {
 			os.Exit(1)
 		}
+		if cmdString == "portscan" {
+			fmt.Println("Waiting for scan to finish.")
+			commander(cmdString, instID[1], false)
+			currentDir = ssmaws.GetWorkingDirectory(sess, instID[1])
+			return
+		}
 		if cmdString != "" {
-			commander(cmdString, instID[1])
+			commander(cmdString, instID[1], true)
 			currentDir = ssmaws.GetWorkingDirectory(sess, instID[1])
 		} else {
 			fmt.Println(cmdString)
@@ -91,7 +97,7 @@ func base64Decode(str string) (string, error) {
 	return string(data), err
 }
 
-func commander(cmdString string, instID string) {
+func commander(cmdString string, instID string, timeout bool) {
 	cmdid := ssmaws.SendCommand(sess, cmdString, instID)
 
 	var i int
@@ -105,7 +111,7 @@ func commander(cmdString string, instID string) {
 		if *status.Status == "Cancelled" {
 			break
 		}
-		if i == 8 {
+		if i == 8 && timeout == true {
 			ssmaws.CancelSendCommand(sess, instID, cmdid)
 		}
 	}
