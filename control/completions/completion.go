@@ -57,7 +57,7 @@ func Start() {
 		if target == "" || connected == false {
 			l.SetPrompt(red("Not Connected") + " <" + blue("") + "> ")
 		} else {
-			l.SetPrompt(green("Connected") + " <" + blue(target+"/"+region+"/"+instance) + "> ")
+			l.SetPrompt(green("Connected") + " <" + blue(target+"/"+region+"/"+instance+red(currentDir)) + "> ")
 		}
 		line, err := l.Readline()
 		if err == readline.ErrInterrupt {

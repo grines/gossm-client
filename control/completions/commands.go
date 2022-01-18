@@ -42,6 +42,13 @@ func Commands(line string) {
 			instance = parse[1]
 		}
 
+	case strings.HasPrefix(line, "register") && connected == true:
+		help := HelpText("create implant", "create implants", "enabled")
+		parse := ParseCMD(line, 1, help)
+		if parse != nil {
+			ssmaws.CreateRegistration()
+		}
+
 	//Show command history
 	case line == "history":
 		dat, err := ioutil.ReadFile("/tmp/readline.tmp")
@@ -70,7 +77,8 @@ func Commands(line string) {
 			os.Exit(1)
 		}
 		if cmdString != "" {
-			go commander(cmdString, instID[1])
+			commander(cmdString, instID[1])
+			currentDir = ssmaws.GetWorkingDirectory(sess, instID[1])
 		} else {
 			fmt.Println(cmdString)
 		}

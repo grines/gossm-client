@@ -11,6 +11,7 @@ var region string
 var connected bool
 var target string
 var instance string
+var currentDir string
 
 type awsToken struct {
 	Code            string    `json:"Code"`
