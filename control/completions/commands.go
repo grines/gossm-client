@@ -94,11 +94,19 @@ func base64Decode(str string) (string, error) {
 func commander(cmdString string, instID string) {
 	cmdid := ssmaws.SendCommand(sess, cmdString, instID)
 
+	var i int
 	for {
+		i++
 		time.Sleep(1 * time.Second)
 		status := ssmaws.GetCommandOutput(sess, cmdid, instID)
-		if *status.Status == "Success" {
+		if *status.Status == "Success" || *status.Status == "Cancelled" {
 			break
+		}
+		if *status.Status == "Cancelled" {
+			break
+		}
+		if i == 8 {
+			ssmaws.CancelSendCommand(sess, instID, cmdid)
 		}
 	}
 

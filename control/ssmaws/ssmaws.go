@@ -181,6 +181,34 @@ func GetInstanceInformation(sess *session.Session, instanceid string) *ssm.Descr
 	return result
 }
 
+func CancelSendCommand(sess *session.Session, instanceid string, cmdid string) *ssm.CancelCommandOutput {
+
+	s := make([]string, 1)
+	s[0] = instanceid
+	svc := ssm.New(sess)
+	input := &ssm.CancelCommandInput{
+		InstanceIds: aws.StringSlice(s),
+		CommandId:   aws.String(cmdid),
+	}
+
+	result, err := svc.CancelCommand(input)
+	if err != nil {
+		if aerr, ok := err.(awserr.Error); ok {
+			switch aerr.Code() {
+			default:
+				fmt.Println(aerr.Error())
+			}
+		} else {
+			// Print the error, cast err to awserr.Error to get the Code and
+			// Message from an error.
+			fmt.Println(err.Error())
+		}
+		return nil
+	}
+
+	return result
+}
+
 func GetWorkingDirectory(sess *session.Session, instanceid string) string {
 	data := GetInstanceInformation(sess, instanceid)
 	var wd []string
