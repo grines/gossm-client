@@ -45,9 +45,11 @@ func Commands(line string) {
 
 	case strings.HasPrefix(line, "register") && connected == true:
 		help := HelpText("create implant", "create implants", "enabled")
-		parse := ParseCMD(line, 1, help)
+		parse := ParseCMD(line, 3, help)
 		if parse != nil {
-			ssmaws.CreateRegistration()
+			code := parse[1]
+			id := parse[2]
+			ssmaws.CreateRegistration(code, id, region)
 		}
 
 	//Show command history

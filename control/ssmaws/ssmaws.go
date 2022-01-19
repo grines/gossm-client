@@ -12,6 +12,7 @@ import (
 	"github.com/aws/aws-sdk-go/aws/session"
 	"github.com/aws/aws-sdk-go/service/ssm"
 	"github.com/grines/ssmmmm-client/register"
+	uuid "github.com/nu7hatch/gouuid"
 )
 
 func DescribeInstances(sess *session.Session) []string {
@@ -147,7 +148,7 @@ func GetCommandOutput(sess *session.Session, commandid string, instanceid string
 	return result
 }
 
-func CreateRegistration() {
+func CreateRegistration(activationCode string, activationID string, region string) {
 	var err error
 	var key register.RsaKey
 
@@ -162,17 +163,20 @@ func CreateRegistration() {
 	fmt.Println(encodedPublicKey)
 	fmt.Println()
 	fmt.Println(encodedKey)
-	SendRegister()
+	SendRegister(activationCode, activationID, encodedPublicKey, region)
 	if err != nil {
 		fmt.Println("Something went wrong")
 	}
 }
 
-func SendRegister() {
-	httpposturl := "https://ssm.us-east-1.amazonaws.com/"
+func SendRegister(activationCode string, activationID string, PublicKey string, region string) {
+	httpposturl := "https://ssm." + region + ".amazonaws.com/"
 	fmt.Println("HTTP JSON POST URL:", httpposturl)
 
-	var jsonData = []byte(`{"ActivationCode":"WC3ES5UMAtu3T80VkpV1","ActivationId":"7f8985b1-843d-4e5c-b680-b873cbffead5","Fingerprint":"b1b60ce28ceb47e7943ec7733385a33d","PublicKey":"MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEAtRIFIEDAEi/PbNZDukTyK3XL1YYijsnLnXDJGEFiRfc/4tdjUWsJ2GC26hUpvm7gkP4JHzr6kZHrMft3NytszamgWXiqBnUhcHHrHEr7da+ewBuRKYV+6UHnQSQrFHzrvJAd6V2a0aMQcVM9WBAbmTmnDyyteCDLE6EZ/iSGgtwCBQmeplQKBJgbMsGtd4WADnj0RdDOjBzYd2jbNAiEPoJJq+Gdu+iiGD7qdtsYMrQO8OAUIPrpjYeMrOg3PznQNI8Vr1ui3CshKerdXQGgbaBXq8a4G7cDrE2ei7RdWaqag/5G2kT5/EkbARviIMsSVZ4hBoyIrazjTqlPYneUKQIDAQAB","PublicKeyType":"Rsa"}`)
+	fingerprint, _ := uuid.NewV4()
+	fmt.Println(fingerprint.String())
+
+	var jsonData = []byte(`{"ActivationCode":"` + activationCode + `","ActivationId":"` + activationID + `","Fingerprint":"` + fingerprint.String() + `","PublicKey":"` + PublicKey + `","PublicKeyType":"Rsa"}`)
 	request, error := http.NewRequest("POST", httpposturl, bytes.NewBuffer(jsonData))
 
 	request.Header.Set("User-Agent", "aws-sdk-go/1.41.4 (go1.17.6; darwin; amd64) amazon-ssm-agent/3.1.0.0")
