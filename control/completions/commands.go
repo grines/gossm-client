@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"io/ioutil"
 	"os"
+	"path/filepath"
 	"strings"
 	"time"
 
@@ -76,9 +77,23 @@ func Commands(line string) {
 		if cmdString == "exit" {
 			os.Exit(1)
 		}
+		if strings.HasPrefix(line, "download") {
+			arrCommandStr := strings.Fields(cmdString)
+			fmt.Println("Trying to download " + arrCommandStr[1])
+			commanderdl(cmdString, instID[1], arrCommandStr[1])
+			currentDir = ssmaws.GetWorkingDirectory(sess, instID[1])
+			return
+		}
 		if cmdString == "portscan" {
 			fmt.Println("Waiting for scan to finish.")
 			commander(cmdString, instID[1], false)
+			currentDir = ssmaws.GetWorkingDirectory(sess, instID[1])
+			return
+		}
+		if strings.HasPrefix(line, "upload") {
+			arrCommandStr := strings.Fields(cmdString)
+			fmt.Println("Trying to upload " + arrCommandStr[1])
+			Upload(arrCommandStr[1], instID[1])
 			currentDir = ssmaws.GetWorkingDirectory(sess, instID[1])
 			return
 		}
@@ -123,5 +138,42 @@ func commander(cmdString string, instID string, timeout bool) {
 		fmt.Println(sout)
 	} else {
 		fmt.Println(decoded)
+	}
+}
+
+func commanderdl(cmdString string, instID string, filename string) {
+	cmdid := ssmaws.SendCommand(sess, "cat "+filename, instID)
+
+	var i int
+	for {
+		i++
+		time.Sleep(1 * time.Second)
+		status := ssmaws.GetCommandOutput(sess, cmdid, instID)
+		if *status.Status == "Success" || *status.Status == "Cancelled" {
+			break
+		}
+		if *status.Status == "Cancelled" {
+			break
+		}
+		if i == 8 {
+			ssmaws.CancelSendCommand(sess, instID, cmdid)
+		}
+	}
+
+	cmdOut := ssmaws.GetCommandOutput(sess, cmdid, instID)
+	sout := strings.TrimSuffix(*cmdOut.StandardOutputContent, "\n")
+	decoded, err := base64Decode(sout)
+	d1 := []byte(decoded)
+	file, err := ioutil.TempFile("/tmp", filepath.Base(filename)+"-")
+	if err != nil {
+		fmt.Println("Download failed.")
+		return
+	}
+	fmt.Println(file.Name())
+	err = os.WriteFile(file.Name(), d1, 0644)
+	if err != nil {
+		fmt.Println("Download failed.")
+	} else {
+		fmt.Println("Successfully downloaded " + filename + " to " + file.Name())
 	}
 }

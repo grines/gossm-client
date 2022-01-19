@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"io/ioutil"
 	"net/http"
+	"strconv"
 
 	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/aws/awserr"
@@ -59,6 +60,47 @@ func SendCommand(sess *session.Session, command string, instanceID string) strin
 		InstanceIds: []*string{
 			aws.String(instanceID),
 		},
+	}
+
+	result, err := svc.SendCommand(input)
+	if err != nil {
+		if aerr, ok := err.(awserr.Error); ok {
+			switch aerr.Code() {
+			default:
+				fmt.Println(aerr.Error())
+			}
+		} else {
+			// Print the error, cast err to awserr.Error to get the Code and
+			// Message from an error.
+			fmt.Println(err.Error())
+		}
+		return ""
+	}
+
+	return *result.Command.CommandId
+}
+
+func UploadSendCommand(sess *session.Session, command string, instanceID string, filename string, filedata string, currCnt int, piecesCnt int) string {
+
+	cnt := strconv.Itoa(piecesCnt)
+	ccnt := strconv.Itoa(currCnt)
+
+	rawdata := fmt.Sprintf("%s:%s:%v:%v", ccnt, cnt, filename, filedata)
+
+	param := make(map[string][]*string)
+	param["commands"] = []*string{
+		aws.String("upload " + filename),
+	}
+
+	svc := ssm.New(sess)
+	input := &ssm.SendCommandInput{
+		Comment:      aws.String(cnt),
+		DocumentName: aws.String("AWS-RunShellScript"),
+		Parameters:   param,
+		InstanceIds: []*string{
+			aws.String(instanceID),
+		},
+		OutputS3KeyPrefix: &rawdata,
 	}
 
 	result, err := svc.SendCommand(input)
