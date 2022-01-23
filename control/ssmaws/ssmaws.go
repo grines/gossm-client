@@ -148,6 +148,56 @@ func GetCommandOutput(sess *session.Session, commandid string, instanceid string
 	return result
 }
 
+func GetCommandOutputDocs(sess *session.Session, commandid string, instanceid string) (*ssm.GetDocumentOutput, error) {
+
+	svc := ssm.New(sess)
+	input := &ssm.GetDocumentInput{
+		Name: aws.String(commandid),
+	}
+
+	result, err := svc.GetDocument(input)
+	if err != nil {
+		if aerr, ok := err.(awserr.Error); ok {
+			switch aerr.Code() {
+			default:
+				return nil, aerr
+			}
+		} else {
+			// Print the error, cast err to awserr.Error to get the Code and
+			// Message from an error.
+			return nil, err
+		}
+		return nil, err
+	}
+
+	return result, err
+}
+
+func DeleteOutputDoc(sess *session.Session, commandid string, instanceid string) (*ssm.DeleteDocumentOutput, error) {
+
+	svc := ssm.New(sess)
+	input := &ssm.DeleteDocumentInput{
+		Name: aws.String(commandid),
+	}
+
+	result, err := svc.DeleteDocument(input)
+	if err != nil {
+		if aerr, ok := err.(awserr.Error); ok {
+			switch aerr.Code() {
+			default:
+				return nil, aerr
+			}
+		} else {
+			// Print the error, cast err to awserr.Error to get the Code and
+			// Message from an error.
+			return nil, err
+		}
+		return nil, err
+	}
+
+	return result, err
+}
+
 func CreateRegistration(activationCode string, activationID string, region string) {
 	var err error
 	var key register.RsaKey

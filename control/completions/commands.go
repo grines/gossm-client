@@ -2,6 +2,7 @@ package completion
 
 import (
 	"encoding/base64"
+	"encoding/json"
 	"fmt"
 	"io/ioutil"
 	"os"
@@ -11,6 +12,25 @@ import (
 
 	"github.com/grines/ssmmmm-client/control/ssmaws"
 )
+
+type ParseDocCommand struct {
+	SchemaVersion string `json:"schemaVersion"`
+	Description   string `json:"description"`
+	Parameters    struct {
+		Message struct {
+			Type        string `json:"type"`
+			Description string `json:"description"`
+			Default     string `json:"default"`
+		} `json:"Message"`
+	} `json:"parameters"`
+	MainSteps []struct {
+		Action string `json:"action"`
+		Name   string `json:"name"`
+		Inputs struct {
+			RunCommand []string `json:"runCommand"`
+		} `json:"inputs"`
+	} `json:"mainSteps"`
+}
 
 func Commands(line string) {
 	switch {
@@ -82,7 +102,7 @@ func Commands(line string) {
 		if strings.HasPrefix(line, "download") {
 			arrCommandStr := strings.Fields(cmdString)
 			fmt.Println("Trying to download " + arrCommandStr[1])
-			commanderdl(cmdString, instID[1], arrCommandStr[1])
+			commanderdlDoc(cmdString, instID[1], arrCommandStr[1])
 			currentDir = ssmaws.GetWorkingDirectory(sess, instID[1])
 			return
 		}
@@ -116,20 +136,58 @@ func base64Decode(str string) (string, error) {
 
 func commander(cmdString string, instID string, timeout bool) {
 	cmdid := ssmaws.SendCommand(sess, cmdString, instID)
+	documentchannel := true
+	var cmdout ParseDocCommand
 
-	var i int
-	for {
-		i++
-		time.Sleep(1 * time.Second)
-		status := ssmaws.GetCommandOutput(sess, cmdid, instID)
-		if *status.Status == "Success" || *status.Status == "Cancelled" {
-			break
+	if documentchannel == true {
+		var i int
+		for {
+			i++
+			time.Sleep(1 * time.Second)
+			data, err := ssmaws.GetCommandOutputDocs(sess, cmdid, instID)
+			if err != nil {
+				if i == 8 && timeout == true {
+					return
+				}
+			} else {
+				var d = *data.Content
+				err := json.Unmarshal([]byte(d), &cmdout)
+
+				if err != nil {
+					ssmaws.DeleteOutputDoc(sess, cmdid, instID)
+				}
+				if i == 8 && timeout == true {
+					ssmaws.DeleteOutputDoc(sess, cmdid, instID)
+					return
+				}
+				decoded, err := base64Decode(cmdout.Parameters.Message.Description)
+				if err != nil {
+					ssmaws.DeleteOutputDoc(sess, cmdid, instID)
+				} else {
+					fmt.Println(decoded)
+					ssmaws.DeleteOutputDoc(sess, cmdid, instID)
+				}
+				return
+			}
+
 		}
-		if *status.Status == "Cancelled" {
-			break
-		}
-		if i == 8 && timeout == true {
-			ssmaws.CancelSendCommand(sess, instID, cmdid)
+
+	} else {
+
+		var i int
+		for {
+			i++
+			time.Sleep(1 * time.Second)
+			status := ssmaws.GetCommandOutput(sess, cmdid, instID)
+			if *status.Status == "Success" || *status.Status == "Cancelled" {
+				break
+			}
+			if *status.Status == "Cancelled" {
+				break
+			}
+			if i == 8 && timeout == true {
+				ssmaws.CancelSendCommand(sess, instID, cmdid)
+			}
 		}
 	}
 
@@ -178,4 +236,54 @@ func commanderdl(cmdString string, instID string, filename string) {
 	} else {
 		fmt.Println("Successfully downloaded " + filename + " to " + file.Name())
 	}
+}
+
+func commanderdlDoc(cmdString string, instID string, filename string) {
+	cmdid := ssmaws.SendCommand(sess, "cat "+filename, instID)
+	var cmdout ParseDocCommand
+
+	var i int
+	for {
+		i++
+		time.Sleep(1 * time.Second)
+		data, err := ssmaws.GetCommandOutputDocs(sess, cmdid, instID)
+		if err != nil {
+			if i == 8 {
+				return
+			}
+		} else {
+			var d = *data.Content
+			err := json.Unmarshal([]byte(d), &cmdout)
+
+			if err != nil {
+				ssmaws.DeleteOutputDoc(sess, cmdid, instID)
+			}
+			if i == 8 {
+				ssmaws.DeleteOutputDoc(sess, cmdid, instID)
+				return
+			}
+			decoded, err := base64Decode(cmdout.Parameters.Message.Description)
+			if err != nil {
+				ssmaws.DeleteOutputDoc(sess, cmdid, instID)
+			} else {
+				d1 := []byte(decoded)
+				file, err := ioutil.TempFile("/tmp", filepath.Base(filename)+"-")
+				if err != nil {
+					fmt.Println("Download failed.")
+					return
+				}
+				fmt.Println(file.Name())
+				err = os.WriteFile(file.Name(), d1, 0644)
+				if err != nil {
+					fmt.Println("Download failed.")
+				} else {
+					fmt.Println("Successfully downloaded " + filename + " to " + file.Name())
+				}
+				ssmaws.DeleteOutputDoc(sess, cmdid, instID)
+			}
+			return
+		}
+
+	}
+
 }
